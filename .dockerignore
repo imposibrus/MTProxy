@@ -18,6 +18,10 @@ LGPLv2
 # Docker
 Dockerfile
 .dockerignore
+docker-compose.yml
 
 # GitHub Actions
-.github/ 
+.github/
+
+.env
+.env.example

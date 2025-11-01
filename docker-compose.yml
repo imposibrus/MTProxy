@@ -1,31 +1,49 @@
-version: '3.8'
-
 services:
   mtproxy:
     build: .
     ports:
-      - "443:443"
-      - "8888:8888"
+      - "${PORT:-443}:${PORT:-443}"
+      - "127.0.0.1:${STATS_PORT:-8888}:${STATS_PORT:-8888}"
     environment:
       # Generate a random secret: head -c 16 /dev/urandom | xxd -ps
       - SECRET=${SECRET:-}
+
+      # External IP address (auto-detected if not set)
+      - EXTERNAL_IP=${EXTERNAL_IP:-}
+
       # Port for client connections
-      - PORT=443
+      - PORT=${PORT:-443}
+
       # Port for statistics
-      - STATS_PORT=8888
-      # Number of workers
-      - WORKERS=1
+      - STATS_PORT=${STATS_PORT:-8888}
+
+      # Number of workers. Use 0 when DOMAIN is set
+      - WORKERS=${WORKERS:-1}
+
       # Proxy tag from @MTProxybot
       - PROXY_TAG=${PROXY_TAG:-}
-      # Enable random padding (true/false)
+
+      # Domain for EE mode (Fake-TLS + Padding)
+      # Example: www.google.com, www.cloudflare.com
+      # When set, automatically enables EE mode with client secret: ee + SECRET + domain_hex
+      - DOMAIN=${DOMAIN:-}
+
+      # Enable DD mode (Random Padding only, when DOMAIN is not set)
+      # When true, automatically uses DD mode with client secret: dd + SECRET
       - RANDOM_PADDING=${RANDOM_PADDING:-false}
     volumes:
-      # Persist config files
-      - ./data:/opt/mtproxy/data
+      # Persist config files (proxy-secret, proxy-multi.conf)
+      - ./data:/etc/mtproxy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    mem_limit: 128m
+    memswap_limit: 128m # same value as mem_limit is disables the swap
+    cpu_shares: 1024 # default value. service container's relative CPU weight versus other containers
+    cpus: "0.5" # number of cores. 0.000 - no limit
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/stats"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s 
+      start_period: 30s
